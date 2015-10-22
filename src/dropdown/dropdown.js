@@ -4,70 +4,74 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
   openClass: 'open'
 })
 
-.service('DropdownService', ['$document', '$rootScope', function($document, $rootScope) {
-  return function() {
-  var openScope = null;
+.factory('DropdownFactory', ['$document', '$rootScope', function($document, $rootScope) {
+  return {
+    createService: function() {
+      return new function() {
+        var openScope = null;
 
-  this.open = function(dropdownScope) {
-    if (!openScope) {
-      $document.bind('click', closeDropdown);
-      $document.bind('keydown', keybindFilter);
+        this.open = function(dropdownScope) {
+          if (!openScope) {
+            $document.bind('click', closeDropdown);
+            $document.bind('keydown', keybindFilter);
+          }
+
+          if (openScope && openScope !== dropdownScope) {
+            openScope.isOpen = false;
+          }
+
+          openScope = dropdownScope;
+        };
+
+        this.close = function(dropdownScope) {
+          if (openScope === dropdownScope) {
+            openScope = null;
+            $document.unbind('click', closeDropdown);
+            $document.unbind('keydown', keybindFilter);
+          }
+        };
+
+        var closeDropdown = function(evt) {
+          // This method may still be called during the same mouse event that
+          // unbound this event handler. So check openScope before proceeding.
+          if (!openScope) { return; }
+
+          if (evt && openScope.getAutoClose() === 'disabled')  { return ; }
+
+          var toggleElement = openScope.getToggleElement();
+          if (evt && toggleElement && toggleElement[0].contains(evt.target)) {
+            return;
+          }
+
+          var dropdownElement = openScope.getDropdownElement();
+          if (evt && openScope.getAutoClose() === 'outsideClick' &&
+            dropdownElement && dropdownElement[0].contains(evt.target)) {
+            return;
+          }
+
+          openScope.isOpen = false;
+
+          if (!$rootScope.$$phase) {
+            openScope.$apply();
+          }
+        };
+
+        var keybindFilter = function(evt) {
+          if (evt.which === 27) {
+            openScope.focusToggleElement();
+            closeDropdown();
+          } else if (openScope.isKeynavEnabled() && /(38|40)/.test(evt.which) && openScope.isOpen) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            openScope.focusDropdownEntry(evt.which);
+          }
+        };
+      }();
     }
-
-    if (openScope && openScope !== dropdownScope) {
-      openScope.isOpen = false;
-    }
-
-    openScope = dropdownScope;
-  };
-
-  this.close = function(dropdownScope) {
-    if (openScope === dropdownScope) {
-      openScope = null;
-      $document.unbind('click', closeDropdown);
-      $document.unbind('keydown', keybindFilter);
-    }
-  };
-
-  var closeDropdown = function(evt) {
-    // This method may still be called during the same mouse event that
-    // unbound this event handler. So check openScope before proceeding.
-    if (!openScope) { return; }
-
-    if (evt && openScope.getAutoClose() === 'disabled')  { return ; }
-
-    var toggleElement = openScope.getToggleElement();
-    if (evt && toggleElement && toggleElement[0].contains(evt.target)) {
-      return;
-    }
-
-    var dropdownElement = openScope.getDropdownElement();
-    if (evt && openScope.getAutoClose() === 'outsideClick' &&
-      dropdownElement && dropdownElement[0].contains(evt.target)) {
-      return;
-    }
-
-    openScope.isOpen = false;
-
-    if (!$rootScope.$$phase) {
-      openScope.$apply();
-    }
-  };
-
-  var keybindFilter = function(evt) {
-    if (evt.which === 27) {
-      openScope.focusToggleElement();
-      closeDropdown();
-    } else if (openScope.isKeynavEnabled() && /(38|40)/.test(evt.which) && openScope.isOpen) {
-      evt.preventDefault();
-      evt.stopPropagation();
-      openScope.focusDropdownEntry(evt.which);
-    }
-  };
   };
 }])
 
-.controller('DropdownController', ['$scope', '$attrs', '$parse', 'dropdownConfig', 'DropdownService', '$animate', '$position', '$document', '$compile', '$templateRequest', function($scope, $attrs, $parse, dropdownConfig, DropdownService, $animate, $position, $document, $compile, $templateRequest) {
+.controller('DropdownController', ['$scope', '$attrs', '$parse', 'dropdownConfig', 'DropdownFactory', '$animate', '$position', '$document', '$compile', '$templateRequest', function($scope, $attrs, $parse, dropdownConfig, DropdownFactory, $animate, $position, $document, $compile, $templateRequest) {
   var self = this,
     scope = $scope.$new(), // create a child scope so we are not polluting original one
     templateScope,
@@ -78,7 +82,7 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
     appendToBody = false,
     keynavEnabled = false,
     body = $document.find('body'),
-    dropdownService = new DropdownService();
+    dropdownService = DropdownFactory.createService();
 
   this.init = function(element) {
     self.$element = element;
