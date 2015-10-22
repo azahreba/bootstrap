@@ -4,7 +4,8 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
   openClass: 'open'
 })
 
-.service('dropdownService', ['$document', '$rootScope', function($document, $rootScope) {
+.service('DropdownService', ['$document', '$rootScope', function($document, $rootScope) {
+  return function() {
   var openScope = null;
 
   this.open = function(dropdownScope) {
@@ -63,9 +64,10 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
       openScope.focusDropdownEntry(evt.which);
     }
   };
+  };
 }])
 
-.controller('DropdownController', ['$scope', '$attrs', '$parse', 'dropdownConfig', 'dropdownService', '$animate', '$position', '$document', '$compile', '$templateRequest', function($scope, $attrs, $parse, dropdownConfig, dropdownService, $animate, $position, $document, $compile, $templateRequest) {
+.controller('DropdownController', ['$scope', '$attrs', '$parse', 'dropdownConfig', 'DropdownService', '$animate', '$position', '$document', '$compile', '$templateRequest', function($scope, $attrs, $parse, dropdownConfig, DropdownService, $animate, $position, $document, $compile, $templateRequest) {
   var self = this,
     scope = $scope.$new(), // create a child scope so we are not polluting original one
     templateScope,
@@ -75,8 +77,8 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
     toggleInvoker = $attrs.onToggle ? $parse($attrs.onToggle) : angular.noop,
     appendToBody = false,
     keynavEnabled = false,
-    selectedOption = null,
-    body = $document.find('body');
+    body = $document.find('body'),
+    dropdownService = new DropdownService();
 
   this.init = function(element) {
     self.$element = element;
